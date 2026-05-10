@@ -1,0 +1,251 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum RolNombre {
+  ADMIN
+  EGRESADO
+  EMPRESA
+}
+
+enum ModalidadOferta {
+  PRESENCIAL
+  REMOTO
+  HIBRIDO
+}
+
+enum EstadoPostulacion {
+  POSTULADO
+  REVISION
+  ENTREVISTA
+  CONTRATADO
+  RECHAZADO
+}
+
+enum TipoNotificacion {
+  NUEVA_OFERTA
+  CAMBIO_ESTADO
+  NUEVA_POSTULACION
+}
+
+enum TipoHabilidad {
+  TECNICA
+  BLANDA
+}
+
+enum NivelFormacion {
+  PREGRADO
+  POSTGRADO
+  DIPLOMADO
+  MAESTRIA
+  DOCTORADO
+  CURSO
+}
+
+model Rol {
+  id      Int        @id @default(autoincrement())
+  nombre  RolNombre  @unique
+  usuarios Usuario[]
+
+  @@map("roles")
+}
+
+model Usuario {
+  id            Int       @id @default(autoincrement())
+  email         String    @unique
+  password_hash String
+  rol_id        Int
+  rol           Rol       @relation(fields: [rol_id], references: [id])
+  activo        Boolean   @default(true)
+  creado_en     DateTime  @default(now())
+  actualizado_en DateTime @updatedAt
+
+  egresado Egresado?
+  empresa  Empresa?
+  notificaciones Notificacion[]
+
+  @@map("usuarios")
+}
+
+model Carrera {
+  id          Int       @id @default(autoincrement())
+  nombre      String    @unique
+  descripcion String?
+  egresados   Egresado[]
+
+  @@map("carreras")
+}
+
+model Habilidad {
+  id     Int           @id @default(autoincrement())
+  nombre String        @unique
+  tipo   TipoHabilidad
+
+  egresadoHabilidades EgresadoHabilidad[]
+  ofertaHabilidades   OfertaHabilidad[]
+
+  @@map("habilidades")
+}
+
+model Egresado {
+  id                Int       @id @default(autoincrement())
+  usuario_id        Int       @unique
+  usuario           Usuario   @relation(fields: [usuario_id], references: [id])
+  nombres           String
+  apellidos         String
+  fecha_nacimiento  DateTime?
+  ciudad            String?
+  pais              String?
+  telefono          String?
+  direccion         String?
+  foto_url          String?
+  cv_url            String?
+  linkedin_url      String?
+  github_url        String?
+  titulo            String?
+  universidad       String?
+  carrera_id        Int?
+  carrera           Carrera?  @relation(fields: [carrera_id], references: [id])
+  anio_egreso        Int?
+  descripcion_personal String?
+
+  formacion_academica FormacionAcademica[]
+  experiencia_laboral ExperienciaLaboral[]
+  habilidades         EgresadoHabilidad[]
+  postulaciones       Postulacion[]
+
+  @@map("egresados")
+}
+
+model FormacionAcademica {
+  id           Int            @id @default(autoincrement())
+  egresado_id  Int
+  egresado     Egresado       @relation(fields: [egresado_id], references: [id])
+  institucion  String
+  titulo       String
+  nivel        NivelFormacion
+  anio_inicio   Int?
+  anio_fin      Int?
+  descripcion  String?
+
+  @@map("formacion_academica")
+}
+
+model ExperienciaLaboral {
+  id           Int       @id @default(autoincrement())
+  egresado_id  Int
+  egresado     Egresado  @relation(fields: [egresado_id], references: [id])
+  empresa      String
+  cargo        String
+  fecha_inicio DateTime
+  fecha_fin    DateTime?
+  descripcion  String?
+  actual_trabajo Boolean @default(false)
+
+  @@map("experiencia_laboral")
+}
+
+model EgresadoHabilidad {
+  id           Int       @id @default(autoincrement())
+  egresado_id  Int
+  egresado     Egresado  @relation(fields: [egresado_id], references: [id])
+  habilidad_id Int
+  habilidad    Habilidad @relation(fields: [habilidad_id], references: [id])
+  nivel        Int?      // 1-5
+
+  @@unique([egresado_id, habilidad_id])
+  @@map("egresado_habilidades")
+}
+
+model Empresa {
+  id          Int       @id @default(autoincrement())
+  usuario_id  Int       @unique
+  usuario     Usuario   @relation(fields: [usuario_id], references: [id])
+  nombre      String
+  descripcion String?
+  sector      String?
+  tamanio      String?
+  ubicacion   String?
+  sitio_web   String?
+  logo_url    String?
+
+  ofertas OfertaLaboral[]
+
+  @@map("empresas")
+}
+
+model OfertaLaboral {
+  id               Int              @id @default(autoincrement())
+  empresa_id       Int
+  empresa          Empresa          @relation(fields: [empresa_id], references: [id])
+  titulo           String
+  descripcion      String
+  salario_min      Float?
+  salario_max      Float?
+  modalidad        ModalidadOferta
+  ubicacion        String?
+  requisitos       String?
+  fecha_publicacion DateTime        @default(now())
+  fecha_cierre     DateTime?
+  activa           Boolean          @default(true)
+
+  habilidades       OfertaHabilidad[]
+  postulaciones     Postulacion[]
+
+  @@map("ofertas_laborales")
+}
+
+model OfertaHabilidad {
+  id           Int           @id @default(autoincrement())
+  oferta_id    Int
+  oferta       OfertaLaboral @relation(fields: [oferta_id], references: [id])
+  habilidad_id Int
+  habilidad    Habilidad     @relation(fields: [habilidad_id], references: [id])
+
+  @@unique([oferta_id, habilidad_id])
+  @@map("oferta_habilidades")
+}
+
+model Postulacion {
+  id           Int              @id @default(autoincrement())
+  oferta_id    Int
+  oferta       OfertaLaboral    @relation(fields: [oferta_id], references: [id])
+  egresado_id  Int
+  egresado     Egresado         @relation(fields: [egresado_id], references: [id])
+  estado       EstadoPostulacion @default(POSTULADO)
+  fecha_postulacion DateTime     @default(now())
+  fecha_actualizacion DateTime   @updatedAt
+
+  historial_estados HistorialEstado[]
+
+  @@map("postulaciones")
+}
+
+model HistorialEstado {
+  id             Int              @id @default(autoincrement())
+  postulacion_id Int
+  postulacion    Postulacion      @relation(fields: [postulacion_id], references: [id])
+  estado         EstadoPostulacion
+  fecha          DateTime         @default(now())
+  comentario     String?
+
+  @@map("historial_estados")
+}
+
+model Notificacion {
+  id        Int             @id @default(autoincrement())
+  usuario_id Int
+  usuario   Usuario         @relation(fields: [usuario_id], references: [id])
+  tipo      TipoNotificacion
+  mensaje   String
+  leida     Boolean         @default(false)
+  url       String?
+  creada_en DateTime        @default(now())
+
+  @@map("notificaciones")
+}

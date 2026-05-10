@@ -1,0 +1,19 @@
+# Dependencias
+node_modules/
+
+# Variables de entorno
+.env
+
+# Archivos de build
+dist/
+build/
+
+# Logs
+*.log
+
+# Sistema operativo
+.DS_Store
+Thumbs.db
+
+# Prisma migrations (opcional, si quieres mantenerlas sincronizadas quita esta línea)
+# backend/prisma/migrations/

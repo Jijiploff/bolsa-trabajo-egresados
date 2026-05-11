@@ -15,7 +15,12 @@ export default function GraduatesByYearChart({ data }: Props) {
           <XAxis dataKey="ano" tick={{ fontSize: 12 }} />
           <YAxis allowDecimals={false} />
           <Tooltip />
-          <Line type="monotone" dataKey="cantidad" stroke="var(--primary)" strokeWidth={2} dot={{ r: 4 }} />
+          <Line type="monotone" dataKey="cantidad" stroke="var(--primary)" strokeWidth={2} dot={{
+            r: 5,
+            fill: "#2563eb",
+            stroke: "#ffffff",
+            strokeWidth: 2,
+          }} />
         </LineChart>
       </ResponsiveContainer>
     </div>

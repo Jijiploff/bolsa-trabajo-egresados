@@ -3,6 +3,8 @@ import { Button } from '@/components/ui/button';
 import { useAuth } from '@/hooks/useAuth';
 import { API_URL } from '@/lib/constants';
 import { Download } from 'lucide-react';
+import api from '@/lib/api';
+import { toast } from 'sonner';
 
 type ReportType = 'egresados-carrera' | 'ofertas-activas' | 'postulaciones-oferta' | 'empleabilidad-carrera' | 'demanda-habilidades' | 'comparacion-cohortes';
 
@@ -31,7 +33,7 @@ export default function ReportGenerator() {
 
   const buildUrl = (): string | null => {
     if (!selectedReport) return null;
-    const base = `${API_URL.replace('/api', '')}/api/reports/`; // backend usa /api/reports/...
+    const base = `${API_URL.replace('/api', '')}/api/reports/`;
     switch (selectedReport) {
       case 'egresados-carrera':
         return `${base}egresados-por-carrera${ano ? `?ano=${ano}` : ''}`;
@@ -50,15 +52,34 @@ export default function ReportGenerator() {
     }
   };
 
-  const handleDownload = () => {
+  const handleDownload = async () => {
     const url = buildUrl();
     if (!url) return;
+
     setLoading(true);
-    // Simular breve carga antes de abrir
-    setTimeout(() => {
-      window.open(url, '_blank');
+    try {
+      // Usar Axios para obtener el PDF como blob (respeta cookies y CORS)
+      const response = await api.get(url, { responseType: 'blob' });
+
+      // Crear un enlace temporal y forzar la descarga
+      const blob = new Blob([response.data], { type: 'application/pdf' });
+      const downloadUrl = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = downloadUrl;
+      link.download = selectedReport + '.pdf'; // nombre sugerido
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(downloadUrl);
+
+      toast.success('Reporte descargado');
+    } catch (err: any) {
+      const message = err.response?.data?.message || 'Error al generar el reporte';
+      toast.error(message);
+      console.error('Error descargando reporte:', err);
+    } finally {
       setLoading(false);
-    }, 500);
+    }
   };
 
   const needAno = selectedReport === 'egresados-carrera';
@@ -70,7 +91,6 @@ export default function ReportGenerator() {
       <h2 className="text-xl font-semibold mb-4">Generar reporte PDF</h2>
 
       <div className="space-y-4">
-        {/* Selección de tipo */}
         <div>
           <label className="block text-sm font-medium mb-1">Tipo de reporte</label>
           <select
@@ -90,7 +110,6 @@ export default function ReportGenerator() {
           </select>
         </div>
 
-        {/* Filtros dinámicos */}
         {needAno && (
           <div>
             <label className="block text-sm font-medium mb-1">Año de egreso (opcional)</label>

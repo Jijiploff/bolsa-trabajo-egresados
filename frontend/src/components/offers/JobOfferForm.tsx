@@ -3,6 +3,9 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { jobOfferSchema, JobOfferFormData } from '@/validations/jobOfferValidations';
 import { Button } from '@/components/ui/button';
 import { Plus, Trash2 } from 'lucide-react';
+import { useState } from 'react';
+import api from '@/lib/api';
+import { toast } from 'sonner';
 
 interface Props {
   defaultValues?: Partial<JobOfferFormData>;
@@ -29,6 +32,28 @@ export default function JobOfferForm({ defaultValues, onSubmit, loading, habilid
   });
 
   const { fields, append, remove } = useFieldArray({ control, name: 'habilidades' });
+
+  // Para creación de nueva habilidad
+  const [newSkillName, setNewSkillName] = useState('');
+  const [newSkillType, setNewSkillType] = useState<'TECNICA' | 'BLANDA'>('TECNICA');
+  const [habilidadesList, setHabilidadesList] = useState(habilidadesDisponibles);
+
+  const handleCreateSkill = async () => {
+    if (!newSkillName.trim()) return;
+    try {
+      const res = await api.post('/habilidades', { nombre: newSkillName.trim(), tipo: newSkillType });
+      const nuevaHabilidad = res.data;
+      // Agregar a la lista local
+      setHabilidadesList(prev => [...prev, { id: nuevaHabilidad.id, nombre: nuevaHabilidad.nombre }]);
+      // Agregar al campo del formulario
+      append({ habilidad_id: nuevaHabilidad.id });
+      setNewSkillName('');
+      toast.success('Habilidad creada y agregada');
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || 'Error al crear habilidad');
+    }
+  };
+
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 max-w-2xl">
@@ -75,22 +100,56 @@ export default function JobOfferForm({ defaultValues, onSubmit, loading, habilid
         <input type="date" {...register('fecha_cierre')} className="w-full border rounded-md px-3 py-2" />
       </div>
 
-      {/* Habilidades dinámicas */}
+      {/* Sección de habilidades dinámicas */}
       <div>
         <h3 className="text-lg font-semibold mb-2">Habilidades requeridas</h3>
+        
+        {/* Habilidades ya seleccionadas */}
         {fields.map((field, index) => (
           <div key={field.id} className="flex gap-2 mb-2 items-center">
-            <select {...register(`habilidades.${index}.habilidad_id`, { valueAsNumber: true })} className="w-full border rounded-md px-3 py-2">
+            <select
+              {...register(`habilidades.${index}.habilidad_id`, { valueAsNumber: true })}
+              className="w-full border rounded-md px-3 py-2"
+            >
               <option value="">Seleccione habilidad</option>
-              {habilidadesDisponibles.map((h) => (
+              {habilidadesList.map((h) => (
                 <option key={h.id} value={h.id}>{h.nombre}</option>
               ))}
             </select>
             <button type="button" onClick={() => remove(index)} className="text-red-500"><Trash2 size={16} /></button>
           </div>
         ))}
-        <Button type="button" variant="outline" size="sm" onClick={() => append({ habilidad_id: 0 })}>
-          <Plus size={16} className="mr-1" /> Agregar habilidad
+
+        {/* Crear nueva habilidad */}
+        <div className="flex gap-2 items-end mt-3 p-3 border rounded-md bg-gray-50">
+          <div className="flex-1">
+            <label className="block text-xs font-medium mb-1">Nueva habilidad</label>
+            <input
+              type="text"
+              value={newSkillName}
+              onChange={(e) => setNewSkillName(e.target.value)}
+              placeholder="Nombre de la habilidad"
+              className="w-full border rounded-md px-3 py-2"
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-medium mb-1">Tipo</label>
+            <select
+              value={newSkillType}
+              onChange={(e) => setNewSkillType(e.target.value as any)}
+              className="w-full border rounded-md px-3 py-2"
+            >
+              <option value="TECNICA">Técnica</option>
+              <option value="BLANDA">Blanda</option>
+            </select>
+          </div>
+          <Button type="button" variant="outline" onClick={handleCreateSkill} title="Crear y agregar">
+            <Plus size={16} className="mr-1" /> Crear
+          </Button>
+        </div>
+
+        <Button type="button" variant="outline" size="sm" className="mt-2" onClick={() => append({ habilidad_id: 0 })}>
+          <Plus size={16} className="mr-1" /> Agregar habilidad existente
         </Button>
       </div>
 
